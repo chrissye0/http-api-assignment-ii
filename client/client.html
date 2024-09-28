@@ -1,13 +1,113 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <title>Our simple HTTP server</title>
   <link rel="stylesheet" type="text/css" href="/style.css">
-  
-  <script>
 
+  <script>
+    const handleResponse = async (response, parseResponse) => {
+      const content = document.querySelector('#content');
+      switch (response.status) {
+        case 200:
+          content.innerHTML = `<b>Success</b>`;
+          break;
+        case 201:
+          content.innerHTML = `<b>Created</b>`;
+          break;
+        case 204:
+          content.innerHTML = `<b>Updated (No Content)</b>`;
+          break;
+        case 400:
+          content.innerHTML = `<b>Bad Request</b>`;
+          break;
+        case 404:
+          content.innerHTML = `<b>Resource Not Found</b>`;
+          break;
+        default:
+          content.innerHTML = `Error code not implemented by client.`;
+          break;
+      }
+
+      //If we should parse a response (meaning we made a get request)
+      if (parseResponse) {
+        //Parse the response to json. This is an async function, so we will await it.
+        let obj = await response.json();
+        console.log(obj);
+        if (response.status === 200) {
+          content.innerHTML += `<p>${JSON.stringify(obj.users)}</p>`;
+        } else { // show message for all other status codes
+          content.innerHTML += `<p>${obj.message}</p>`;
+        }
+      }
+    };
+
+    const sendGet = async (userForm) => {
+      const url = userForm.querySelector('#urlField').value;
+      const method = userForm.querySelector('#methodSelect').value;
+
+      let response = await fetch(url, {
+        method: method,
+        headers: {
+          'Accept': 'application/json',
+        }
+      });
+      handleResponse(response, method === 'get');
+    };
+
+    const sendPost = async (nameForm) => {
+      //Grab all the info from the form
+      const url = nameForm.getAttribute('action');
+      const method = nameForm.getAttribute('method');
+
+      const nameField = nameForm.querySelector('#nameField');
+      const ageField = nameForm.querySelector('#ageField');
+
+      //Build a data string in the FORM-URLENCODED format.
+      const formData = `name=${nameField.value}&age=${ageField.value}`;
+
+      //Make a fetch request and await a response. Set the method to
+      //the one provided by the form (POST). Set the headers. Content-Type
+      //is the type of data we are sending. Accept is the data we would like
+      //in response. Then add our FORM-URLENCODED string as the body of the request.
+      let response = await fetch(url, {
+        method: method,
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/json',
+        },
+        body: formData,
+      });
+      //Once we have a response, handle it.
+      handleResponse(response, response.status !== 204);
+    };
+
+    const init = () => {
+      //grab forms
+      const nameForm = document.querySelector('#nameForm');
+      const userForm = document.querySelector('#userForm');
+
+      const addUsers = (e) => {
+        e.preventDefault();
+        sendPost(nameForm);
+        return false;
+      }
+
+      const getUsers = (e) => {
+        e.preventDefault();
+        sendGet(userForm);
+        return false;
+      }
+
+      //add event listeners
+      nameForm.addEventListener('submit', addUsers);
+      userForm.addEventListener('submit', getUsers);
+    };
+
+    window.onload = init;
   </script>
 </head>
+
 <body>
   <section id="top">
     <h3>POST Status Code Tests</h3>
@@ -15,7 +115,7 @@
       <label for="name">Name: </label>
       <input id="nameField" type="text" name="name" />
       <label for="age">Age: </label>
-      <input id="ageField" type="number" name="age" min="0" max="100" step="1"/>
+      <input id="ageField" type="number" name="age" min="0" max="100" step="1" />
       <input type="submit" value="Add User" />
     </form>
     <form id="userForm" action="/getUsers" method="get">
@@ -33,4 +133,5 @@
   <section id="content">
   </section>
 </body>
+
 </html>
